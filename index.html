@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hangman Game</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 24px 12px;
+  background: #101322;
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+h1 {
+  color: #65e6ff;
+  font-size: 36px;
+}
+
+.subtitle {
+  color: #b9c3e8;
+}
+
+#word {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 28px auto;
+  max-width: 500px;
+}
+
+.letter {
+  width: 30px;
+  height: 42px;
+  border-bottom: 4px solid #65e6ff;
+  font-size: 26px;
+  font-weight: bold;
+}
+
+#drawing {
+  width: 220px;
+  height: 220px;
+  max-width: 100%;
+  margin: 10px auto;
+}
+
+svg {
+  width: 100%;
+  height: 100%;
+}
+
+.part {
+  display: none;
+  stroke: #ff657a;
+  stroke-width: 5;
+  fill: none;
+  stroke-linecap: round;
+}
+
+#keyboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: center;
+  max-width: 440px;
+  margin: 20px auto;
+}
+
+.key {
+  width: 38px;
+  height: 42px;
+  background: #252b45;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 17px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.key:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+#status {
+  min-height: 28px;
+  font-size: 19px;
+  margin: 15px;
+}
+
+#info {
+  color: #ffd166;
+}
+
+.action {
+  background: #65e6ff;
+  color: #101322;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 22px;
+  margin: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h1>HANGMAN</h1>
+<p class="subtitle">Guess the secret word before the drawing is complete!</p>
+
+<div id="info">Mistakes: 0 / 6</div>
+
+<div id="drawing">
+<svg viewBox="0 0 220 220" aria-label="Hangman drawing">
+  <path d="M25 200 H140 M65 200 V20 H145 V45"
+        stroke="#b9c3e8" stroke-width="5" fill="none"
+        stroke-linecap="round"/>
+
+  <circle class="part" id="p1" cx="145" cy="65" r="20"/>
+  <path class="part" id="p2" d="M145 85 V135"/>
+  <path class="part" id="p3" d="M145 98 L115 120"/>
+  <path class="part" id="p4" d="M145 98 L175 120"/>
+  <path class="part" id="p5" d="M145 135 L118 170"/>
+  <path class="part" id="p6" d="M145 135 L172 170"/>
+</svg>
+</div>
+
+<div id="word"></div>
+
+<div id="status">Choose a letter to begin!</div>
+
+<p>Used letters: <span id="used">None</span></p>
+
+<div id="keyboard"></div>
+
+<button class="action" id="newGame">New Game</button>
+
+<script>
+"use strict";
+
+const words = [
+  "ROBOT", "COMPUTER", "DRAGON", "ROCKET",
+  "RAINBOW", "GAMING", "MONSTER", "PLANET",
+  "TREASURE", "HANGMAN", "KEYBOARD", "DIAMOND",
+  "PIRATE", "ZOMBIE", "CHOCOLATE", "THUNDER",
+  "MYSTERY", "FOOTBALL", "ADVENTURE", "GALAXY"
+];
+
+let secretWord = "";
+let guessedLetters = [];
+let mistakes = 0;
+let gameOver = false;
+
+const wordElement = document.getElementById("word");
+const keyboardElement = document.getElementById("keyboard");
+const statusElement = document.getElementById("status");
+const infoElement = document.getElementById("info");
+const usedElement = document.getElementById("used");
+
+function newGame() {
+  secretWord = words[Math.floor(Math.random() * words.length)];
+  guessedLetters = [];
+  mistakes = 0;
+  gameOver = false;
+
+  keyboardElement.innerHTML = "";
+
+  for (let code = 65; code <= 90; code++) {
+    const letter = String.fromCharCode(code);
+    const button = document.createElement("button");
+
+    button.className = "key";
+    button.textContent = letter;
+    button.addEventListener("click", () => guess(letter));
+
+    keyboardElement.appendChild(button);
+  }
+
+  for (let i = 1; i <= 6; i++) {
+    document.getElementById("p" + i).style.display = "none";
+  }
+
+  statusElement.textContent = "Choose a letter to begin!";
+  render();
+}
+
+function render() {
+  wordElement.innerHTML = "";
+
+  for (const letter of secretWord) {
+    const span = document.createElement("span");
+    span.className = "letter";
+    span.textContent = guessedLetters.includes(letter) ? letter : "";
+    wordElement.appendChild(span);
+  }
+
+  infoElement.textContent = `Mistakes: ${mistakes} / 6`;
+
+  usedElement.textContent =
+    guessedLetters.length ? guessedLetters.join(", ") : "None";
+
+  [...keyboardElement.children].forEach(button => {
+    button.disabled =
+      gameOver || guessedLetters.includes(button.textContent);
+  });
+}
+
+function guess(letter) {
+  if (gameOver || guessedLetters.includes(letter)) return;
+
+  guessedLetters.push(letter);
+
+  if (!secretWord.includes(letter)) {
+    mistakes++;
+    document.getElementById("p" + mistakes).style.display = "block";
+  }
+
+  if ([...secretWord].every(char => guessedLetters.includes(char))) {
+    gameOver = true;
+    statusElement.textContent = "You win! Great job!";
+  } else if (mistakes >= 6) {
+    gameOver = true;
+    statusElement.textContent = `Game over! The word was ${secretWord}.`;
+  } else if (secretWord.includes(letter)) {
+    statusElement.textContent = "Correct! Keep going!";
+  } else {
+    statusElement.textContent = "Wrong letter! Try again!";
+  }
+
+  render();
+}
+
+document.addEventListener("keydown", event => {
+  if (/^[a-z]$/i.test(event.key)) {
+    guess(event.key.toUpperCase());
+  }
+});
+
+document.getElementById("newGame").addEventListener("click", newGame);
+
+newGame();
+</script>
+
+</body>
+</html>
